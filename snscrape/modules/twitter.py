@@ -92,7 +92,7 @@ import typing
 import urllib.parse
 import urllib3.util.ssl_
 import warnings
-
+import redis
 
 _logger = logging.getLogger(__name__)
 _API_AUTHORIZATION_HEADER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
@@ -100,6 +100,7 @@ _globalGuestTokenManager = None
 _GUEST_TOKEN_VALIDITY = 10800
 _CIPHERS_CHROME = 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA'
 
+token_login = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 
 @dataclasses.dataclass
 class Tweet(snscrape.base.Item):
@@ -806,10 +807,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		self._guestTokenManager = guestTokenManager
 		self._maxEmptyPages = maxEmptyPages
 		self._apiHeaders = {
-			'Authorization': _API_AUTHORIZATION_HEADER,
-			'Referer': self._baseUrl,
-			'Accept-Language': 'en-US,en;q=0.5',
-		}
+            'User-Agent': None,
+            'Authorization': token_login,
+            'Referer': self._baseUrl,
+            'Accept-Language': 'en-US,en;q=0.5'
+        }
 		adapter = _TwitterTLSAdapter()
 		self._session.mount('https://twitter.com', adapter)
 		self._session.mount('https://api.twitter.com', adapter)
@@ -880,6 +882,20 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		return True, None
 
 	def _get_api_data(self, endpoint, apiType, params, instructionsPath = None):
+		redis_auth = 'Twitt@Pass'
+		r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
+		account = r.randomkey()
+		# print(account)
+		decode = json.loads(r.get(account).decode('utf-8'))
+		# print(decode)
+		while decode['count'] > 14:
+			account = r.randomkey()
+			decode = json.loads(r.get(account).decode('utf-8'))
+		count = decode['count']
+		decode['count'] = count + 1
+		r.set(account, json.dumps(decode))
+		self._apiHeaders['cookie'] = decode['cookie']
+		self._apiHeaders['x-csrf-token'] = decode['token']
 		self._ensure_guest_token()
 		if apiType is _TwitterAPIType.GRAPHQL:
 			params = urllib.parse.urlencode({k: json.dumps(v, separators = (',', ':')) for k, v in params.items()}, quote_via = urllib.parse.quote)
@@ -1542,7 +1558,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 			kwargs['vibe'] = self._make_vibe(result['vibe'])
 		if 'edit_control' in result:
 			kwargs['editState'] = self._make_edit_state(result['edit_control'])
-		return self._make_tweet(tweet, user, **kwargs)
+		return [tweet, user]
 
 	def _graphql_timeline_instructions_to_tweets(self, instructions, includeConversationThreads = False, **kwargs):
 		for instruction in instructions:
