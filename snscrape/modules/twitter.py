@@ -694,7 +694,7 @@ class _CLIGuestTokenManager(GuestTokenManager):
 	def _locked_load(self):
 		if not os.path.exists(self._file):
 			return None
-		_logger.info(f'Reading guest token file {self._file}')
+		# _logger.info(f'Reading guest token file {self._file}')
 		with open(self._file, 'r') as fp:
 			try:
 				o = json.load(fp)
@@ -746,14 +746,14 @@ class _CLIGuestTokenManager(GuestTokenManager):
 
 			# Write back out if there are any tokens, else delete
 			if o['tokens']:
-				_logger.info(f'Writing guest token file {self._file}')
+				# _logger.info(f'Writing guest token file {self._file}')
 				with open(self._file, 'w') as fp:
 					json.dump(o, fp)
 			else:
 				self._locked_delete()
 
 	def _locked_delete(self):
-		_logger.info(f'Deleting guest token file {self._file}')
+		# _logger.info(f'Deleting guest token file {self._file}')
 		try:
 			os.remove(self._file)
 		except FileNotFoundError:
@@ -823,7 +823,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 
 	def _ensure_guest_token(self, url = None):
 		if self._guestTokenManager.token is None:
-			_logger.info('Retrieving guest token')
+			# _logger.info('Retrieving guest token')
 			r = self._get(self._baseUrl if url is None else url, responseOkCallback = self._check_guest_token_response)
 			if (match := re.search(r'document\.cookie = decodeURIComponent\("gt=(\d+); Max-Age=10800; Domain=\.twitter\.com; Path=/; Secure"\);', r.text)):
 				_logger.debug('Found guest token in HTML')
@@ -833,7 +833,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 				self._guestTokenManager.token = r.cookies['gt']
 			if not self._guestTokenManager.token:
 				_logger.debug('No guest token in response')
-				_logger.info('Retrieving guest token via API')
+				# _logger.info('Retrieving guest token via API')
 				r = self._post('https://api.twitter.com/1.1/guest/activate.json', data = b'', headers = self._apiHeaders, responseOkCallback = self._check_guest_token_response)
 				o = r.json()
 				if not o.get('guest_token'):
@@ -885,7 +885,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		redis_auth = 'Twitt@Pass'
 		r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
 		account = r.randomkey()
-		# print(account)
+		print(account)
 		decode = json.loads(r.get(account).decode('utf-8'))
 		# print(decode)
 		# while decode['count'] > 14:
@@ -927,7 +927,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		emptyResponsesOnCursor = 0
 		emptyPages = 0
 		while True:
-			_logger.info(f'Retrieving scroll page {cursor}')
+			# _logger.info(f'Retrieving scroll page {cursor}')
 			obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath = instructionsPath)
 			yield obj
 

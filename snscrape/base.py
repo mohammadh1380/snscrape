@@ -217,7 +217,7 @@ class Scraper:
 			# The request is newly prepared on each retry because of potential cookie updates.
 			req = self._session.prepare_request(requests.Request(method, url, params = params, data = data, headers = headers))
 			environmentSettings = self._session.merge_environment_settings(req.url, proxies, None, None, None)
-			_logger.info(f'Retrieving {req.url}')
+			# _logger.info(f'Retrieving {req.url}')
 			_logger.debug(f'... with headers: {headers!r}')
 			if data:
 				_logger.debug(f'... with data: {data!r}')
@@ -236,7 +236,7 @@ class Scraper:
 				errors.append(repr(exc))
 			else:
 				redirected = f' (redirected to {r.url})' if r.history else ''
-				_logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
+				# _logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
 				_logger.debug(f'... with response headers: {r.headers!r}')
 				if r.history:
 					for i, redirect in enumerate(r.history):
@@ -262,7 +262,7 @@ class Scraper:
 					_logger.log(level, f'Error retrieving {req.url}{msg}{retrying}')
 			if attempt < self._retries:
 				sleepTime = 1.0 * 2**attempt # exponential backoff: sleep 1 second after first attempt, 2 after second, 4 after third, etc.
-				_logger.info(f'Waiting {sleepTime:.0f} seconds')
+				# _logger.info(f'Waiting {sleepTime:.0f} seconds')
 				time.sleep(sleepTime)
 		else:
 			msg = f'{self._retries + 1} requests to {req.url} failed, giving up.'
