@@ -888,12 +888,12 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 		# print(account)
 		decode = json.loads(r.get(account).decode('utf-8'))
 		# print(decode)
-		while decode['count'] > 14:
-			account = r.randomkey()
-			decode = json.loads(r.get(account).decode('utf-8'))
-		count = decode['count']
-		decode['count'] = count + 1
-		r.set(account, json.dumps(decode))
+		# while decode['count'] > 14:
+		# 	account = r.randomkey()
+		# 	decode = json.loads(r.get(account).decode('utf-8'))
+		# count = decode['count']
+		# decode['count'] = count + 1
+		# r.set(account, json.dumps(decode))
 		self._apiHeaders['cookie'] = decode['cookie']
 		self._apiHeaders['x-csrf-token'] = decode['token']
 		self._ensure_guest_token()
