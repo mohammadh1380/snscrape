@@ -925,6 +925,16 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
                                                            instructionsPath=instructionsPath))
         return r._snscrapeObj
 
+    def _get_api_data_2(self, endpoint, apiType, params, instructionsPath=None):
+        self._ensure_guest_token()
+        if apiType is _TwitterAPIType.GRAPHQL:
+            params = urllib.parse.urlencode({k: json.dumps(v, separators=(',', ':')) for k, v in params.items()},
+                                            quote_via=urllib.parse.quote)
+        r = self._get(endpoint, params=params, headers=self._apiHeaders,
+                      responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
+                                                           instructionsPath=instructionsPath))
+        return r._snscrapeObj
+
     def _iter_api_data(self, endpoint, apiType, params, paginationParams=None, cursor=None,
                        direction=_ScrollDirection.BOTTOM, instructionsPath=None):
         # Iterate over endpoint with params/paginationParams, optionally starting from a cursor
@@ -2152,7 +2162,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
             'withV2Timeline': True,
         }
         variables = paginationVariables.copy()
-        del variables['cursor'], variables['referrer']
+        # del variables['cursor'], variables['referrer']
         features = {
             'rweb_lists_timeline_redesign_enabled': False,
             'blue_business_profile_image_shape_enabled': True,
@@ -2177,25 +2187,58 @@ class TwitterTweetScraper(_TwitterAPIScraper):
             'longform_notetweets_inline_media_enabled': False,
             'responsive_web_enhance_cards_enabled': False,
         }
-
+        data = {
+            "variables": {
+                "tweetId": str(self._tweetId),
+                "withCommunity": False,
+                "includePromotedContent": False,
+                "withVoice": False
+            },
+            "features": {
+                "creator_subscriptions_tweet_preview_api_enabled": True,
+                "tweetypie_unmention_optimization_enabled": True,
+                "responsive_web_edit_tweet_api_enabled": True,
+                "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+                "view_counts_everywhere_api_enabled": True,
+                "longform_notetweets_consumption_enabled": True,
+                "responsive_web_twitter_article_tweet_consumption_enabled": False,
+                "tweet_awards_web_tipping_enabled": False,
+                "freedom_of_speech_not_reach_fetch_enabled": True,
+                "standardized_nudges_misinfo": True,
+                "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": True,
+                "longform_notetweets_rich_text_read_enabled": True,
+                "longform_notetweets_inline_media_enabled": True,
+                "responsive_web_graphql_exclude_directive_enabled": True,
+                "verified_phone_label_enabled": False,
+                "responsive_web_media_download_video_enabled": False,
+                "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+                "responsive_web_graphql_timeline_navigation_enabled": True,
+                "responsive_web_enhance_cards_enabled": False
+            },
+            "fieldToggles": {
+                "withArticleRichContentState": False
+            }
+        }
         params = {'variables': variables, 'features': features}
         paginationParams = {'variables': paginationVariables, 'features': features}
-        url = 'https://twitter.com/i/api/graphql/miKSMGb2R1SewIJv2-ablQ/TweetDetail'
+        url = 'https://twitter.com/i/api/graphql/2ICDjqPd81tulZcYrtpTuQ/TweetResultByRestId'
         instructionsPath = ['data', 'threaded_conversation_with_injections_v2', 'instructions']
         if self._mode is TwitterTweetScraperMode.SINGLE:
-            obj = self._get_api_data(url, _TwitterAPIType.GRAPHQL, params=params, instructionsPath=instructionsPath)
+            obj = self._get_api_data_2(url, _TwitterAPIType.GRAPHQL, params=data, instructionsPath=instructionsPath)
             if not obj['data']:
                 return
-            for instruction in obj['data']['threaded_conversation_with_injections_v2']['instructions']:
-                if instruction['type'] != 'TimelineAddEntries':
-                    continue
-                for entry in instruction['entries']:
-                    if entry['entryId'] == f'tweet-{self._tweetId}' and entry['content'][
-                        'entryType'] == 'TimelineTimelineItem' and entry['content']['itemContent'][
-                        'itemType'] == 'TimelineTweet':
-                        yield self._graphql_timeline_tweet_item_result_to_tweet(
-                            entry['content']['itemContent']['tweet_results']['result'], tweetId=self._tweetId)
-                        break
+            yield self._graphql_timeline_tweet_item_result_to_tweet(
+                obj['data']['tweetResult']['result'], tweetId=self._tweetId)
+            # for instruction in obj['data']['threaded_conversation_with_injections_v2']['instructions']:
+            #     if instruction['type'] != 'TimelineAddEntries':
+            #         continue
+            #     for entry in instruction['entries']:
+            #         if entry['entryId'] == f'tweet-{self._tweetId}' and entry['content'][
+            #             'entryType'] == 'TimelineTimelineItem' and entry['content']['itemContent'][
+            #             'itemType'] == 'TimelineTweet':
+            #             yield self._graphql_timeline_tweet_item_result_to_tweet(
+            #                 entry['content']['itemContent']['tweet_results']['result'], tweetId=self._tweetId)
+            #             break
         elif self._mode is TwitterTweetScraperMode.SCROLL:
             hasModeratedReplies = False
             for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, params, paginationParams,
