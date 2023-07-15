@@ -907,13 +907,6 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         account = r.randomkey()
         print(account)
         decode = json.loads(r.get(account).decode('utf-8'))
-        # print(decode)
-        # while decode['count'] > 14:
-        # 	account = r.randomkey()
-        # 	decode = json.loads(r.get(account).decode('utf-8'))
-        # count = decode['count']
-        # decode['count'] = count + 1
-        # r.set(account, json.dumps(decode))
         self._apiHeaders['cookie'] = decode['cookie']
         self._apiHeaders['x-csrf-token'] = decode['token']
         self._ensure_guest_token()
@@ -923,6 +916,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         r = self._get(endpoint, params=params, headers=self._apiHeaders,
                       responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
                                                            instructionsPath=instructionsPath))
+        time.sleep(2)
         return r._snscrapeObj
 
     def _get_api_data_2(self, endpoint, apiType, params, instructionsPath=None):
