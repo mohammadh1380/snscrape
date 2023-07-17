@@ -235,13 +235,6 @@ class Scraper:
 				_logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
 				errors.append(repr(exc))
 			else:
-				redis_auth = 'Twitt@Pass'
-				redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
-				account = redis_obj.randomkey()
-				print(account)
-				decode = json.loads(redis_obj.get(account).decode('utf-8'))
-				headers['cookie'] = decode['cookie']
-				headers['x-csrf-token'] = decode['token']
 				redirected = f' (redirected to {r.url})' if r.history else ''
 				# _logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
 				_logger.debug(f'... with response headers: {r.headers!r}')
@@ -260,6 +253,13 @@ class Scraper:
 					_logger.debug(f'{req.url} retrieved successfully{msg}')
 					return r
 				else:
+					redis_auth = 'Twitt@Pass'
+					redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
+					account = redis_obj.randomkey()
+					print(account)
+					decode = json.loads(redis_obj.get(account).decode('utf-8'))
+					headers['cookie'] = decode['cookie']
+					headers['x-csrf-token'] = decode['token']
 					if attempt < self._retries:
 						retrying = ', retrying'
 						level = logging.INFO

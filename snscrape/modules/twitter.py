@@ -889,6 +889,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         # Pass the already-parsed object outwards so it doesn't need to be decoded twice.
         r._snscrapeObj = obj
         if apiType is _TwitterAPIType.GRAPHQL and 'errors' in obj:
+            for i in obj['errors']:
+                if i['code'] == 126:
+                    return False, i["message"]
             msg = 'Twitter responded with an error: ' + ', '.join(f'{e["name"]}: {e["message"]}' for e in obj['errors'])
             instructions = obj
             for k in instructionsPath:
