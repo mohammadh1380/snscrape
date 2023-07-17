@@ -1,6 +1,6 @@
 __all__ = ['DeprecatedFeatureWarning', 'Item', 'IntWithGranularity', 'ScraperException', 'EntityUnavailable', 'Scraper']
 
-
+import redis
 import abc
 import copy
 import dataclasses
@@ -235,6 +235,13 @@ class Scraper:
 				_logger.log(level, f'Error retrieving {req.url}: {exc!r}{retrying}')
 				errors.append(repr(exc))
 			else:
+				redis_auth = 'Twitt@Pass'
+				r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
+				account = r.randomkey()
+				print(account)
+				decode = json.loads(r.get(account).decode('utf-8'))
+				headers['cookie'] = decode['cookie']
+				headers['x-csrf-token'] = decode['token']
 				redirected = f' (redirected to {r.url})' if r.history else ''
 				# _logger.info(f'Retrieved {req.url}{redirected}: {r.status_code}')
 				_logger.debug(f'... with response headers: {r.headers!r}')

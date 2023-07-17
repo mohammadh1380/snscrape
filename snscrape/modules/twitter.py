@@ -901,9 +901,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
                 return False, msg
         return True, None
 
-    def _get_api_data(self, endpoint, apiType, params, instructionsPath=None):
+    def _get_api_data(self, endpoint, apiType, params, instructionsPath=None, db=None):
         redis_auth = 'Twitt@Pass'
-        r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
+        r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=db)
         account = r.randomkey()
         print(account)
         decode = json.loads(r.get(account).decode('utf-8'))
@@ -930,7 +930,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         return r._snscrapeObj
 
     def _iter_api_data(self, endpoint, apiType, params, paginationParams=None, cursor=None,
-                       direction=_ScrollDirection.BOTTOM, instructionsPath=None):
+                       direction=_ScrollDirection.BOTTOM, instructionsPath=None, db=None):
         # Iterate over endpoint with params/paginationParams, optionally starting from a cursor
         # Handles guest token extraction using the baseUrl passed to __init__ etc.
         # Order from params and paginationParams is preserved. To insert the cursor at a particular location, insert a 'cursor' key into paginationParams there (value is overwritten).
@@ -956,7 +956,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         emptyPages = 0
         while True:
             # _logger.info(f'Retrieving scroll page {cursor}')
-            obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath=instructionsPath)
+            obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath=instructionsPath, db=db)
             yield obj
 
             # No data format test, just a hard and loud crash if anything's wrong :-)
@@ -1845,7 +1845,8 @@ class TwitterSearchScraperMode(enum.Enum):
 class TwitterSearchScraper(_TwitterAPIScraper):
     name = 'twitter-search'
 
-    def __init__(self, query, *, cursor=None, mode=TwitterSearchScraperMode.LIVE, top=None, maxEmptyPages=1, **kwargs):
+    def __init__(self, query, *, cursor=None, mode=TwitterSearchScraperMode.LIVE, top=None, maxEmptyPages=1, db=0, **kwargs):
+        self.db = db
         if not query.strip():
             raise ValueError('empty query')
         if mode not in tuple(TwitterSearchScraperMode):
@@ -1912,7 +1913,7 @@ class TwitterSearchScraper(_TwitterAPIScraper):
         for obj in self._iter_api_data('https://twitter.com/i/api/graphql/7jT5GT59P8IFjgxwqnEdQw/SearchTimeline',
                                        _TwitterAPIType.GRAPHQL, params, paginationParams, cursor=self._cursor,
                                        instructionsPath=['data', 'search_by_raw_query', 'search_timeline', 'timeline',
-                                                         'instructions']):
+                                                         'instructions'], db=self.db):
             yield from self._graphql_timeline_instructions_to_tweets(
                 obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions'])
 
