@@ -903,10 +903,10 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
 
     def _get_api_data(self, endpoint, apiType, params, instructionsPath=None, db=None):
         redis_auth = 'Twitt@Pass'
-        r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=db)
-        account = r.randomkey()
+        redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=db)
+        account = redis_obj.randomkey()
         print(account)
-        decode = json.loads(r.get(account).decode('utf-8'))
+        decode = json.loads(redis_obj.get(account).decode('utf-8'))
         self._apiHeaders['cookie'] = decode['cookie']
         self._apiHeaders['x-csrf-token'] = decode['token']
         self._ensure_guest_token()

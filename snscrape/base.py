@@ -236,10 +236,10 @@ class Scraper:
 				errors.append(repr(exc))
 			else:
 				redis_auth = 'Twitt@Pass'
-				r = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
-				account = r.randomkey()
+				redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=0)
+				account = redis_obj.randomkey()
 				print(account)
-				decode = json.loads(r.get(account).decode('utf-8'))
+				decode = json.loads(redis_obj.get(account).decode('utf-8'))
 				headers['cookie'] = decode['cookie']
 				headers['x-csrf-token'] = decode['token']
 				redirected = f' (redirected to {r.url})' if r.history else ''
