@@ -918,7 +918,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
                                             quote_via=urllib.parse.quote)
         r = self._get(endpoint, params=params, headers=self._apiHeaders,
                       responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
-                                                           instructionsPath=instructionsPath))
+                                                           instructionsPath=instructionsPath), db=db)
         time.sleep(2)
         return r._snscrapeObj
 
