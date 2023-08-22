@@ -1716,9 +1716,9 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
                             tweetId = int(item['entryId'][len(entry['entryId']) + 7:])
                             yield self._graphql_timeline_tweet_item_result_to_tweet(
                                 item['item']['itemContent']['tweet_results']['result'], tweetId=tweetId, **kwargs)
-                elif not entry['entryId'].startswith(
-                        ('cursor-', 'toptabsrpusermodule-', 'tweetdetailrelatedtweets-', 'label-')):
-                    _logger.warning(f'Skipping unrecognised entry ID: {entry["entryId"]!r}')
+                # elif not entry['entryId'].startswith(
+                #         ('cursor-', 'toptabsrpusermodule-', 'tweetdetailrelatedtweets-', 'label-')):
+                #     _logger.warning(f'Skipping unrecognised entry ID: {entry["entryId"]!r}')
 
     def _render_text_with_urls(self, text, urls):
         if not urls:
@@ -1969,7 +1969,7 @@ class TwitterUserScraper(TwitterSearchScraper):
         }
         obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL,
                                  params={'variables': variables, 'features': features},
-                                 instructionsPath=['data', 'user'])
+                                 instructionsPath=['data', 'user'], db=self.db)
         if not obj['data'] or 'result' not in obj['data']['user']:
             raise snscrape.base.ScraperException('Empty response')
         if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
@@ -2061,7 +2061,7 @@ class TwitterProfileScraper(TwitterUserScraper):
         for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies',
                                        _TwitterAPIType.GRAPHQL, params, paginationParams,
                                        instructionsPath=['data', 'user', 'result', 'timeline_v2', 'timeline',
-                                                         'instructions']):
+                                                         'instructions'], db=self.db):
             if not obj['data'] or 'result' not in obj['data']['user']:
                 raise snscrape.base.ScraperException('Empty response')
             if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
@@ -2077,7 +2077,7 @@ class TwitterProfileScraper(TwitterUserScraper):
                             instruction['entry']['content']['itemContent']['tweet_results']['result'], tweetId=tweetId,
                             pinned=True)
             tweets = list(self._graphql_timeline_instructions_to_tweets(instructions, pinned=False))
-            pageTweetIds = frozenset(tweet.id for tweet in tweets)
+            pageTweetIds = frozenset(tweet[0]["id_str"] for tweet in tweets)
             if len(pageTweetIds) > 0 and pageTweetIds in previousPagesTweetIds:
                 _logger.warning(
                     "Found duplicate page of tweets, stopping as assumed cycle found in Twitter's pagination")
