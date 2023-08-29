@@ -206,7 +206,7 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None, db=None):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None, redis_obj=None):
 		if not headers:
 			headers = {}
 		if 'User-Agent' not in headers:
@@ -253,8 +253,6 @@ class Scraper:
 					_logger.debug(f'{req.url} retrieved successfully{msg}')
 					return r
 				else:
-					redis_auth = 'Twitt@Pass'
-					redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=db)
 					account = redis_obj.randomkey()
 					print(account)
 					decode = json.loads(redis_obj.get(account).decode('utf-8'))
