@@ -21,6 +21,9 @@ import warnings
 
 _logger = logging.getLogger(__name__)
 
+redis_auth = 'Twitt@Pass'
+redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=4)
+
 
 class DeprecatedFeatureWarning(FutureWarning):
 	pass
@@ -206,7 +209,7 @@ class Scraper:
 	def entity(self):
 		return self._get_entity()
 
-	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None, redis_obj=None):
+	def _request(self, method, url, params = None, data = None, headers = None, timeout = 10, responseOkCallback = None, allowRedirects = True, proxies = None):
 		if not headers:
 			headers = {}
 		if 'User-Agent' not in headers:
