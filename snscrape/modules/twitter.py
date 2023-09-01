@@ -930,7 +930,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         r = self._get(endpoint, params=params, headers=self._apiHeaders,
                       responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
                                                            instructionsPath=instructionsPath))
-        time.sleep(6)
+        # time.sleep(6)
         return r._snscrapeObj
 
     def _iter_api_data(self, endpoint, apiType, params, paginationParams=None, cursor=None,
