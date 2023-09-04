@@ -879,7 +879,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
             else:
                 blockUntil = int(time.time()) + 300
             self._unset_guest_token(blockUntil)
-            self._ensure_guest_token()
+            # self._ensure_guest_token()
             return False, f'blocked ({r.status_code})'
         if r.headers.get('content-type', '').replace(' ', '') != 'application/json;charset=utf-8':
             return False, 'content type is not JSON'
@@ -913,7 +913,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         decode = json.loads(redis_obj.get(account).decode('utf-8'))
         self._apiHeaders['cookie'] = decode['cookie']
         self._apiHeaders['x-csrf-token'] = decode['token']
-        self._ensure_guest_token()
+        # self._ensure_guest_token()
         if apiType is _TwitterAPIType.GRAPHQL:
             params = urllib.parse.urlencode({k: json.dumps(v, separators=(',', ':')) for k, v in params.items()},
                                             quote_via=urllib.parse.quote)
@@ -1950,7 +1950,7 @@ class TwitterUserScraper(TwitterSearchScraper):
         self._baseUrl = f'https://twitter.com/{self._user}' if not self._isUserId else f'https://twitter.com/i/user/{self._user}'
 
     def _get_entity(self):
-        self._ensure_guest_token()
+        # self._ensure_guest_token()
         if not self._isUserId:
             fieldName = 'screen_name'
             endpoint = 'https://twitter.com/i/api/graphql/pVrmNaXcxPjisIvKtLDMEA/UserByScreenName'
@@ -2370,7 +2370,7 @@ class TwitterCommunityScraper(_TwitterAPIScraper):
         super().__init__(f'https://twitter.com/i/communities/{self._communityId}', **kwargs)
 
     def _get_entity(self):
-        self._ensure_guest_token()
+        # self._ensure_guest_token()
         params = {
             'variables': {
                 'communityId': str(self._communityId),
