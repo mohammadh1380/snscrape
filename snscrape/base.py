@@ -271,7 +271,7 @@ class Scraper:
 			if attempt < self._retries:
 				sleepTime = 1.0 * 2**attempt # exponential backoff: sleep 1 second after first attempt, 2 after second, 4 after third, etc.
 				# _logger.info(f'Waiting {sleepTime:.0f} seconds')
-				time.sleep(sleepTime)
+				# time.sleep(sleepTime)
 		else:
 			msg = f'{self._retries + 1} requests to {req.url} failed, giving up.'
 			_logger.fatal(msg)
