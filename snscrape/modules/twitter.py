@@ -869,7 +869,8 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
     def _unset_guest_token(self, blockUntil):
         self._guestTokenManager.reset(blockUntil=blockUntil)
         del self._session.cookies['gt']
-        del self._apiHeaders['x-guest-token']
+        if self._apiHeaders['x-guest-token']:
+            del self._apiHeaders['x-guest-token']
 
     def _check_api_response(self, r, apiType, instructionsPath):
         if r.status_code in (403, 404, 429):
