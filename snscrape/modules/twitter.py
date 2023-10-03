@@ -101,9 +101,6 @@ _CIPHERS_CHROME = 'TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_PO
 
 token_login = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
 
-redis_auth = 'Twitt@Pass'
-redis_obj = redis.Redis(host='localhost', port=6379, password=redis_auth, db=4)
-
 
 @dataclasses.dataclass
 class Tweet(snscrape.base.Item):
@@ -908,22 +905,22 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
                 return False, msg
         return True, None
 
-    def _get_api_data(self, endpoint, apiType, params, instructionsPath=None):
+    def _get_api_data(self, endpoint, apiType, params, instructionsPath=None, redis_obj=None):
         account = redis_obj.randomkey()
         print(account)
         decode = json.loads(redis_obj.get(account).decode('utf-8'))
         self._apiHeaders['cookie'] = decode['cookie']
         self._apiHeaders['x-csrf-token'] = decode['token']
-        # self._ensure_guest_token()
         if apiType is _TwitterAPIType.GRAPHQL:
             params = urllib.parse.urlencode({k: json.dumps(v, separators=(',', ':')) for k, v in params.items()},
                                             quote_via=urllib.parse.quote)
         r = self._get(endpoint, params=params, headers=self._apiHeaders,
                       responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
-                                                           instructionsPath=instructionsPath))
+                                                           instructionsPath=instructionsPath), redis_obj=redis_obj)
         return r._snscrapeObj
 
     def _get_api_data_2(self, endpoint, apiType, params, instructionsPath=None):
+        print("guest token")
         self._ensure_guest_token()
         if apiType is _TwitterAPIType.GRAPHQL:
             params = urllib.parse.urlencode({k: json.dumps(v, separators=(',', ':')) for k, v in params.items()},
@@ -931,11 +928,11 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         r = self._get(endpoint, params=params, headers=self._apiHeaders,
                       responseOkCallback=functools.partial(self._check_api_response, apiType=apiType,
                                                            instructionsPath=instructionsPath))
-        # time.sleep(6)
+        time.sleep(1)
         return r._snscrapeObj
 
     def _iter_api_data(self, endpoint, apiType, params, paginationParams=None, cursor=None,
-                       direction=_ScrollDirection.BOTTOM, instructionsPath=None):
+                       direction=_ScrollDirection.BOTTOM, instructionsPath=None, redis_obj=None):
         # Iterate over endpoint with params/paginationParams, optionally starting from a cursor
         # Handles guest token extraction using the baseUrl passed to __init__ etc.
         # Order from params and paginationParams is preserved. To insert the cursor at a particular location, insert a 'cursor' key into paginationParams there (value is overwritten).
@@ -961,7 +958,7 @@ class _TwitterAPIScraper(snscrape.base.Scraper):
         emptyPages = 0
         while True:
             # _logger.info(f'Retrieving scroll page {cursor}')
-            obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath=instructionsPath)
+            obj = self._get_api_data(endpoint, apiType, reqParams, instructionsPath=instructionsPath, redis_obj=redis_obj)
             yield obj
 
             # No data format test, just a hard and loud crash if anything's wrong :-)
@@ -1850,7 +1847,8 @@ class TwitterSearchScraperMode(enum.Enum):
 class TwitterSearchScraper(_TwitterAPIScraper):
     name = 'twitter-search'
 
-    def __init__(self, query, *, cursor=None, mode=TwitterSearchScraperMode.LIVE, top=None, maxEmptyPages=1, **kwargs):
+    def __init__(self, query, redis_obj, *, cursor=None, mode=TwitterSearchScraperMode.LIVE, top=None, maxEmptyPages=1, **kwargs):
+        self.redis_obj = redis_obj
         if not query.strip():
             raise ValueError('empty query')
         if mode not in tuple(TwitterSearchScraperMode):
@@ -1917,7 +1915,7 @@ class TwitterSearchScraper(_TwitterAPIScraper):
         for obj in self._iter_api_data('https://twitter.com/i/api/graphql/7jT5GT59P8IFjgxwqnEdQw/SearchTimeline',
                                        _TwitterAPIType.GRAPHQL, params, paginationParams, cursor=self._cursor,
                                        instructionsPath=['data', 'search_by_raw_query', 'search_timeline', 'timeline',
-                                                         'instructions']):
+                                                         'instructions'], redis_obj=self.redis_obj):
             yield from self._graphql_timeline_instructions_to_tweets(
                 obj['data']['search_by_raw_query']['search_timeline']['timeline']['instructions'])
 
@@ -1942,7 +1940,9 @@ class TwitterSearchScraper(_TwitterAPIScraper):
 class TwitterUserScraper(TwitterSearchScraper):
     name = 'twitter-user'
 
-    def __init__(self, user, **kwargs):
+    def __init__(self, user, account, **kwargs):
+        if account:
+            self.account = account
         self._isUserId = isinstance(user, int)
         if not self._isUserId and not self.is_valid_username(user):
             raise ValueError('Invalid username')
@@ -1970,7 +1970,7 @@ class TwitterUserScraper(TwitterSearchScraper):
         }
         obj = self._get_api_data(endpoint, _TwitterAPIType.GRAPHQL,
                                  params={'variables': variables, 'features': features},
-                                 instructionsPath=['data', 'user'])
+                                 instructionsPath=['data', 'user'], account=self.account)
         if not obj['data'] or 'result' not in obj['data']['user']:
             raise snscrape.base.ScraperException('Empty response')
         if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
@@ -2062,7 +2062,7 @@ class TwitterProfileScraper(TwitterUserScraper):
         for obj in self._iter_api_data('https://twitter.com/i/api/graphql/fn9oRltM1N4thkh5CVusPg/UserTweetsAndReplies',
                                        _TwitterAPIType.GRAPHQL, params, paginationParams,
                                        instructionsPath=['data', 'user', 'result', 'timeline_v2', 'timeline',
-                                                         'instructions']):
+                                                         'instructions'], account=self.account):
             if not obj['data'] or 'result' not in obj['data']['user']:
                 raise snscrape.base.ScraperException('Empty response')
             if obj['data']['user']['result']['__typename'] == 'UserUnavailable':
@@ -2262,7 +2262,7 @@ class TwitterTweetScraper(_TwitterAPIScraper):
                 del thisPagParams['variables']['cursor'], thisPagParams['variables']['referrer']
                 hasModeratedReplies = False
                 for obj in self._iter_api_data(url, _TwitterAPIType.GRAPHQL, thisParams, thisPagParams,
-                                               direction=_ScrollDirection.BOTH, instructionsPath=instructionsPath):
+                                               direction=_ScrollDirection.BOTH, instructionsPath=instructionsPath, account=self.account):
                     if not obj['data']:
                         continue
                     for tweet in self._graphql_timeline_instructions_to_tweets(
